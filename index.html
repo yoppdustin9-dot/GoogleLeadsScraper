@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LeadForge - Professional Business Lead Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .search-glow:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .lead-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .lead-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .status-badge {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen overflow-hidden">
+
+    <!-- Main Layout -->
+    <div class="flex h-full">
+        
+        <!-- Sidebar -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col shadow-2xl">
+            <div class="p-6 border-b border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+                        <i class="fas fa-network-wired text-white text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl tracking-tight">LeadForge</h1>
+                        <p class="text-xs text-slate-400">Business Intelligence</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto custom-scrollbar">
+                <button onclick="switchView('scraper')" id="nav-scraper" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 text-white transition-all hover:bg-blue-700">
+                    <i class="fas fa-search w-5"></i>
+                    <span class="font-medium">Lead Scraper</span>
+                </button>
+                
+                <button onclick="switchView('database')" id="nav-database" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fas fa-database w-5"></i>
+                    <span class="font-medium">Lead Database</span>
+                    <span id="db-count" class="ml-auto bg-slate-700 text-xs px-2 py-1 rounded-full">0</span>
+                </button>
+
+                <button onclick="switchView('analytics')" id="nav-analytics" class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all">
+                    <i class="fas fa-chart-line w-5"></i>
+                    <span class="font-medium">Analytics</span>
+                </button>
+
+                <div class="pt-4 mt-4 border-t border-slate-700">
+                    <p class="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Categories</p>
+                    <div id="category-filters" class="space-y-1">
+                        <!-- Dynamic categories -->
+                    </div>
+                </div>
+            </nav>
+
+            <div class="p-4 border-t border-slate-700 bg-slate-800/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-xs font-bold">
+                        JD
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium truncate">John Doe</p>
+                        <p class="text-xs text-slate-400 truncate">Pro Account</p>
+                    </div>
+                    <button onclick="exportData()" class="text-slate-400 hover:text-white transition-colors" title="Export Data">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden bg-gray-50">
+            
+            <!-- Top Bar -->
+            <header class="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-sm z-10">
+                <div class="flex items-center gap-4 flex-1">
+                    <div class="relative flex-1 max-w-2xl">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="global-search" placeholder="Search leads by name, industry, location..." 
+                            class="w-full pl-10 pr-4 py-2.5 bg-gray-100 border border-transparent rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none transition-all search-glow"
+                            oninput="filterLeads()">
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleIndexing()" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fas fa-index"></i>
+                        <span id="index-status">Indexing: ON</span>
+                    </button>
+                    <button onclick="openAddModal()" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20">
+                        <i class="fas fa-plus"></i>
+                        Add Lead
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Views -->
+            <div id="content-area" class="flex-1 overflow-hidden relative">
+                
+                <!-- Scraper View -->
+                <div id="view-scraper" class="h-full overflow-y-auto custom-scrollbar p-8">
+                    <div class="max-w-4xl mx-auto">
+                        <div class="text-center mb-10">
+                            <h2 class="text-3xl font-bold text-gray-900 mb-3">Business Lead Scraper</h2>
+                            <p class="text-gray-600">Search and extract business information from Google Places</p>
+                        </div>
+
+                        <div class="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Business Category / Keyword</label>
+                                    <input type="text" id="scrape-keyword" placeholder="e.g., Software Companies, Restaurants, Law Firms..." 
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                                    <input type="text" id="scrape-location" placeholder="e.g., New York, London..." 
+                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between mb-6">
+                                <div class="flex gap-4 text-sm text-gray-600">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="scrape-emails" checked class="rounded text-blue-600 focus:ring-blue-500">
+                                        <span>Extract Emails</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="scrape-phones" checked class="rounded text-blue-600 focus:ring-blue-500">
+                                        <span>Extract Phones</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" id="scrape-social" class="rounded text-blue-600 focus:ring-blue-500">
+                                        <span>Social Media</span>
+                                    </label>
+                                </div>
+                                <select id="scrape-limit" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="10">10 Results</option>
+                                    <option value="25">25 Results</option>
+                                    <option value="50">50 Results</option>
+                                </select>
+                            </div>
+
+                            <button onclick="startScraping()" id="scrape-btn" class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2">
+                                <i class="fas fa-rocket"></i>
+                                Start Scraping
+                            </button>
+                        </div>
+
+                        <!-- Progress Section -->
+                        <div id="scrape-progress" class="hidden bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-semibold text-lg">Scraping Progress</h3>
+                                <span id="progress-text" class="text-sm font-medium text-blue-600">Initializing...</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden">
+                                <div id="progress-bar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div id="scrape-log" class="bg-gray-900 text-green-400 font-mono text-sm p-4 rounded-lg h-32 overflow-y-auto custom-scrollbar">
+                                <div>> System initialized...</div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-building text-blue-600 text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-gray-900" id="stat-total">0</span>
+                                </div>
+                                <p class="text-gray-600 text-sm">Total Leads</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-gray-900" id="stat-verified">0</span>
+                                </div>
+                                <p class="text-gray-600 text-sm">Verified Contacts</p>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-star text-purple-600 text-xl"></i>
+                                    </div>
+                                    <span class="text-2xl font-bold text-gray-900" id="stat-hot">0</span>
+                                </div>
+                                <p class="text-gray-600 text-sm">Hot Leads</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Database View -->
+                <div id="view-database" class="hidden h-full flex flex-col">
+                    <div class="p-6 border-b border-gray-200 bg-white flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <h2 class="text-xl font-bold text-gray-900">Lead Database</h2>
+                            <div class="flex gap-2">
+                                <button onclick="filterByStatus('all')" class="px-3 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors">All</button>
+                                <button onclick="filterByStatus('new')" class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors">New</button>
+                                <button onclick="filterByStatus('contacted')" class="px-3 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-700 hover:bg-yellow-200 transition-colors">Contacted</button>
+                                <button onclick="filterByStatus('qualified')" class="px-3 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700 hover:bg-green-200 transition-colors">Qualified</button>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <select id="sort-by" onchange="sortLeads()" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="newest">Newest First</option>
+                                <option value="rating">Highest Rated</option>
+                                <option value="name">Name A-Z</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-6">
+                        <div id="leads-grid" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <!-- Dynamic lead cards -->
+                        </div>
+                        <div id="empty-state" class="hidden h-full flex flex-col items-center justify-center text-gray-400">
+                            <i class="fas fa-inbox text-6xl mb-4 text-gray-300"></i>
+                            <p class="text-lg font-medium">No leads found</p>
+                            <p class="text-sm">Start by scraping some leads or add manually</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics View -->
+                <div id="view-analytics" class="hidden h-full overflow-y-auto custom-scrollbar p-8">
+                    <div class="max-w-6xl mx-auto">
+                        <h2 class="text-2xl font-bold text-gray-900 mb-6">Analytics Dashboard</h2>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                                <h3 class="font-semibold text-gray-900 mb-4">Lead Sources</h3>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600">Google Maps</span>
+                                        <div class="flex items-center gap-2 flex-1 mx-4">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                                <div class="bg-blue-600 h-2 rounded-full" style="width: 75%"></div>
+                                            </div>
+                                            <span class="text-sm font-medium">75%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600">Manual Entry</span>
+                                        <div class="flex items-center gap-2 flex-1 mx-4">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                                <div class="bg-green-600 h-2 rounded-full" style="width: 20%"></div>
+                                            </div>
+                                            <span class="text-sm font-medium">20%</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600">Import</span>
+                                        <div class="flex items-center gap-2 flex-1 mx-4">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                                <div class="bg-purple-600 h-2 rounded-full" style="width: 5%"></div>
+                                            </div>
+                                            <span class="text-sm font-medium">5%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                                <h3 class="font-semibold text-gray-900 mb-4">Status Distribution</h3>
+                                <div class="flex items-end justify-around h-32">
+                                    <div class="flex flex-col items-center gap-2">
+                                        <div class="w-12 bg-blue-500 rounded-t-lg" style="height: 60%"></div>
+                                        <span class="text-xs text-gray-600">New</span>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-2">
+                                        <div class="w-12 bg-yellow-500 rounded-t-lg" style="height: 30%"></div>
+                                        <span class="text-xs text-gray-600">Contacted</span>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-2">
+                                        <div class="w-12 bg-green-500 rounded-t-lg" style="height: 25%"></div>
+                                        <span class="text-xs text-gray-600">Qualified</span>
+                                    </div>
+                                    <div class="flex flex-col items-center gap-2">
+                                        <div class="w-12 bg-red-500 rounded-t-lg" style="height: 15%"></div>
+                                        <span class="text-xs text-gray-600">Lost</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                            <div class="p-6 border-b border-gray-200">
+                                <h3 class="font-semibold text-gray-900">Recent Activity</h3>
+                            </div>
+                            <div class="divide-y divide-gray-200" id="activity-log">
+                                <!-- Dynamic activity -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Lead Modal -->
+    <div id="add-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-xl font-bold text-gray-900">Add New Lead</h3>
+                <button onclick="closeAddModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <form id="add-lead-form" onsubmit="saveLead(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Business Name *</label>
+                    <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                        <input type="text" name="category" placeholder="e.g., Technology" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Rating</label>
+                        <select name="rating" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="5">5 Stars</option>
+                            <option value="4">4 Stars</option>
+                            <option value="3">3 Stars</option>
+                            <option value="2">2 Stars</option>
+                            <option value="1">1 Star</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <input type="text" name="address" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                        <input type="tel" name="phone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                    <input type="url" name="website" placeholder="https://" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea name="notes" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="button" onclick="closeAddModal()" class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">Save Lead</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Data Management
+        let leads = JSON.parse(localStorage.getItem('leadforge_leads')) || [];
+        let currentFilter = 'all';
+        let indexingEnabled = true;
+        let searchIndex = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateStats();
+            renderLeads();
+            updateCategories();
+            buildIndex();
+            renderActivityLog();
+        });
+
+        // View Management
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[id^="nav-"]').forEach(el => {
+                el.classList.remove('bg-blue-600', 'text-white');
+                el.classList.add('text-slate-300');
+            });
+            
+            // Show selected view
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            document.getElementById(`nav-${viewName}`).classList.remove('text-slate-300');
+            document.getElementById(`nav-${viewName}`).classList.add('bg-blue-600', 'text-white');
+            
+            if (viewName === 'database') renderLeads();
+            if (viewName === 'analytics') updateAnalytics();
+        }
+
+        // Scraping Simulation
+        async function startScraping() {
+            const keyword = document.getElementById('scrape-keyword').value;
+            const location = document.getElementById('scrape-location').value;
+            const limit = parseInt(document.getElementById('scrape-limit').value);
+            
+            if (!keyword || !location) {
+                alert('Please enter both keyword and location');
+                return;
+            }
+
+            const btn = document.getElementById('scrape-btn');
+            const progressDiv = document.getElementById('scrape-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const log = document.getElementById('scrape-log');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scraping...';
+            progressDiv.classList.remove('hidden');
+            
+            const categories = ['Software', 'Services', 'Consulting', 'Technology', 'Marketing'];
+            const streets = ['Main St', 'Broadway', 'Market St', 'Park Ave', '5th Avenue'];
+            
+            for (let i = 0; i < limit; i++) {
+                const progress = ((i + 1) / limit) * 100;
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `Scraping ${i + 1} of ${limit}...`;
+                
+                // Simulate log entries
+                const businessName = `${keyword.split(' ')[0]} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))} Corp`;
+                const address = `${Math.floor(Math.random() * 1000) + 1} ${streets[Math.floor(Math.random() * streets.length)]}, ${location}`;
+                
+                log.innerHTML += `<div>> Found: ${businessName} at ${address}</div>`;
+                log.scrollTop = log.scrollHeight;
+                
+                // Create lead object
+                const newLead = {
+                    id: Date.now() + i,
+                    name: businessName,
+                    category: categories[Math.floor(Math.random() * categories.length)],
+                    address: address,
+                    phone: `+1 (${Math.floor(Math.random() * 900) + 100}) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+                    email: `contact@${businessName.toLowerCase().replace(/\s/g, '')}.com`,
+                    website: `https://${businessName.toLowerCase().replace(/\s/g, '')}.com`,
+                    rating: (Math.random() * 2 + 3).toFixed(1),
+                    reviews: Math.floor(Math.random() * 500),
+                    status: 'new',
+                    source: 'Google Maps',
+                    createdAt: new Date().toISOString(),
+                    notes: '',
+                    indexed: indexingEnabled
+                };
+                
+                leads.unshift(newLead);
+                await new Promise(r => setTimeout(r, 300 + Math.random() * 400));
+            }
+            
+            saveToStorage();
+            updateStats();
+            updateCategories();
+            if (indexingEnabled) buildIndex();
+            
+            progressText.textContent = 'Complete!';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-rocket"></i> Start Scraping';
+            
+            setTimeout(() => {
+                progressDiv.classList.add('hidden');
+                log.innerHTML = '<div>> System initialized...</div>';
+                switchView('database');
+            }, 1500);
+        }
+
+        // Database Functions
+        function renderLeads() {
+            const grid = document.getElementById('leads-grid');
+            const emptyState = document.getElementById('empty-state');
+            const searchTerm = document.getElementById('global-search').value.toLowerCase();
+            
+            let filtered = leads.filter(lead => {
+                const matchesSearch = !searchTerm || 
+                    lead.name.toLowerCase().includes(searchTerm) ||
+                    lead.category?.toLowerCase().includes(searchTerm) ||
+                    lead.address?.toLowerCase().includes(searchTerm) ||
+                    (indexingEnabled && searchIndex[lead.id]?.includes(searchTerm));
+                
+                const matchesStatus = currentFilter === 'all' || lead.status === currentFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            // Sort
+            const sortBy = document.getElementById('sort-by').value;
+            if (sortBy === 'newest') filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            if (sortBy === 'rating') filtered.sort((a, b) => b.rating - a.rating);
+            if (sortBy === 'name') filtered.sort((a, b) => a.name.localeCompare(b.name));
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            emptyState.classList.add('hidden');
+            grid.innerHTML = filtered.map(lead => `
+                <div class="lead-card bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden fade-in">
+                    <div class="p-6">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-lg text-gray-900 truncate">${lead.name}</h3>
+                                <p class="text-sm text-gray-500">${lead.category || 'Uncategorized'}</p>
+                            </div>
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(lead.status)}">
+                                ${lead.status}
+                            </span>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <i class="fas fa-map-marker-alt w-4 text-gray-400"></i>
+                                <span class="truncate">${lead.address || 'N/A'}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <i class="fas fa-phone w-4 text-gray-400"></i>
+                                <span>${lead.phone || 'N/A'}</span>
+                            </div>
+                            <div class="flex items-center gap-2 text-sm text-gray-600">
+                                <i class="fas fa-envelope w-4 text-gray-400"></i>
+                                <span class="truncate">${lead.email || 'N/A'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                            <div class="flex items-center gap-1">
+                                <i class="fas fa-star text-yellow-400"></i>
+                                <span class="font-medium">${lead.rating}</span>
+                                <span class="text-gray-400 text-sm">(${lead.reviews || 0})</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="updateStatus(${lead.id}, 'contacted')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Mark as Contacted">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="updateStatus(${lead.id}, 'qualified')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Mark as Qualified">
+                                    <i class="fas fa-trophy"></i>
+                                </button>
+                                <button onclick="deleteLead(${lead.id})" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    ${lead.notes ? `
+                    <div class="px-6 py-3 bg-gray-50 border-t border-gray-100">
+                        <p class="text-xs text-gray-600 line-clamp-2">${lead.notes}</p>
+                    </div>
+                    ` : ''}
+                </div>
+            `).join('');
+            
+            document.getElementById('db-count').textContent = leads.length;
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'new': 'bg-blue-100 text-blue-700',
+                'contacted': 'bg-yellow-100 text-yellow-700',
+                'qualified': 'bg-green-100 text-green-700',
+                'lost': 'bg-red-100 text-red-700'
+            };
+            return colors[status] || 'bg-gray-100 text-gray-700';
+        }
+
+        function updateStatus(id, status) {
+            const lead = leads.find(l => l.id === id);
+            if (lead) {
+                lead.status = status;
+                saveToStorage();
+                renderLeads();
+                addActivity(`Updated ${lead.name} to ${status}`);
+            }
+        }
+
+        function deleteLead(id) {
+            if (confirm('Are you sure you want to delete this lead?')) {
+                leads = leads.filter(l => l.id !== id);
+                saveToStorage();
+                updateStats();
+                renderLeads();
+                updateCategories();
+            }
+        }
+
+        function filterByStatus(status) {
+            currentFilter = status;
+            renderLeads();
+        }
+
+        function filterLeads() {
+            renderLeads();
+        }
+
+        function sortLeads() {
+            renderLeads();
+        }
+
+        // Modal Functions
+        function openAddModal() {
+            document.getElementById('add-modal').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('add-modal').classList.add('hidden');
+            document.getElementById('add-lead-form').reset();
+        }
+
+        function saveLead(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            
+            const newLead = {
+                id: Date.now(),
+                name: formData.get('name'),
+                category: formData.get('category'),
+                address: formData.get('address'),
+                phone: formData.get('phone'),
+                email: formData.get('email'),
+                website: formData.get('website'),
+                rating: formData.get('rating'),
+                reviews: 0,
+                status: 'new',
+                source: 'Manual',
+                createdAt: new Date().toISOString(),
+                notes: formData.get('notes'),
+                indexed: indexingEnabled
+            };
+            
+            leads.unshift(newLead);
+            saveToStorage();
+            updateStats();
+            updateCategories();
+            renderLeads();
+            closeAddModal();
+            addActivity(`Added new lead: ${newLead.name}`);
+            
+            if (indexingEnabled) buildIndex();
+        }
+
+        // Indexing System
+        function toggleIndexing() {
+            indexingEnabled = !indexingEnabled;
+            document.getElementById('index-status').textContent = `Indexing: ${indexingEnabled ? 'ON' : 'OFF'}`;
+            if (indexingEnabled) buildIndex();
+        }
+
+        function buildIndex() {
+            searchIndex = {};
+            leads.forEach(lead => {
+                const searchableText = [
+                    lead.name,
+                    lead.category,
+                    lead.address,
+                    lead.notes,
+                    lead.email,
+                    lead.phone
+                ].filter(Boolean).join(' ').toLowerCase();
+                searchIndex[lead.id] = searchableText;
+            });
+        }
+
+        // Category Management
+        function updateCategories() {
+            const categories = [...new Set(leads.map(l => l.category).filter(Boolean))];
+            const container = document.getElementById('category-filters');
+            
+            container.innerHTML = categories.map(cat => `
+                <button onclick="filterByCategory('${cat}')" class="w-full flex items-center justify-between px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+                    <span>${cat}</span>
+                    <span class="text-xs bg-slate-700 px-2 py-0.5 rounded-full">${leads.filter(l => l.category === cat).length}</span>
+                </button>
+            `).join('');
+        }
+
+        function filterByCategory(category) {
+            document.getElementById('global-search').value = category;
+            filterLeads();
+            switchView('database');
+        }
+
+        // Stats & Analytics
+        function updateStats() {
+            document.getElementById('stat-total').textContent = leads.length;
+            document.getElementById('stat-verified').textContent = leads.filter(l => l.email && l.phone).length;
+            document.getElementById('stat-hot').textContent = leads.filter(l => l.rating >= 4.5).length;
+            document.getElementById('db-count').textContent = leads.length;
+        }
+
+        function updateAnalytics() {
+            // Update charts based on current data
+            renderActivityLog();
+        }
+
+        function renderActivityLog() {
+            const recentLeads = leads.slice(0, 5);
+            const container = document.getElementById('activity-log');
+            
+            container.innerHTML = recentLeads.map(lead => `
+                <div class="p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <i class="fas fa-building"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-900">${lead.name}</p>
+                        <p class="text-sm text-gray-500">Added ${new Date(lead.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <span class="px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(lead.status)}">
+                        ${lead.status}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function addActivity(message) {
+            // In a real app, this would save to an activity log
+            console.log('Activity:', message);
+        }
+
+        // Data Persistence
+        function saveToStorage() {
+            localStorage.setItem('leadforge_leads', JSON.stringify(leads));
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(leads, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `leadforge_export_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        // Close modal on outside click
+        document.getElementById('add-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeAddModal();
+        });
+    </script>
+</body>
+</html>
